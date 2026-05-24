@@ -18,8 +18,11 @@ export function BottomNav() {
 
   if (pathname.startsWith("/login") || pathname.startsWith("/auth")) return null;
 
+  const isBanca = pathname.startsWith("/banca");
+
   return (
     <nav
+      data-theme={isBanca ? "dark" : undefined}
       aria-label="Navegação principal"
       className="fixed inset-x-0 bottom-0 z-40 flex items-end justify-around bg-elev px-2 pb-7 pt-2"
       style={{ borderTop: "1px solid var(--line)", boxShadow: "0 -4px 16px rgba(26,20,16,.05)" }}
