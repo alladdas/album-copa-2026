@@ -159,6 +159,7 @@ async function main() {
         .from(BUCKET)
         .upload(storagePath, compressed, {
           contentType: "image/webp",
+          cacheControl: "31536000", // 1 year — sticker images never change
           upsert: true,
         });
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { teamColorVar } from "@/lib/team-colors";
 
@@ -73,23 +74,22 @@ export function StickerCard({
       {hasImage ? (
         // ── IMAGE CARD ──────────────────────────────────────────────────
         // CSS filter drives locked (grayscale+dim) → owned (full color) effect.
-        // The sc-reveal animation on the card handles scale+glow; the image's
-        // own transition handles grayscale→color independently at 420ms.
-        // onError falls back silently to the placeholder branch via imgError state.
+        // next/image handles lazy loading, Vercel CDN optimization, and responsive
+        // sizing. onError falls back silently to placeholder via imgError state.
         <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={imageUrl}
             alt=""
-            loading="lazy"
-            onError={() => setImgError(true)}
-            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+            fill
+            sizes={size === "sm" ? "25vw" : "120px"}
+            className="object-cover pointer-events-none"
             style={{
               filter: isLocked
                 ? "grayscale(100%) brightness(55%)"
                 : "grayscale(0%) brightness(100%)",
               transition: "filter 420ms ease",
             }}
+            onError={() => setImgError(true)}
             draggable={false}
           />
 

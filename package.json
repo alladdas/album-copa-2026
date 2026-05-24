@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "import-cromos": "tsx scripts/import-cromos.ts"
+    "import-cromos": "tsx scripts/import-cromos.ts",
+    "migrate-storage": "tsx scripts/migrate-storage-paths.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
