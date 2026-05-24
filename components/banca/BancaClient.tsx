@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { X, Check, CornerDownLeft, MapPin } from "lucide-react";
+import { toast } from "sonner";
 import { incrementOwned, recordAcquisition } from "@/lib/queries";
 import type { Source } from "@/types/database";
 
@@ -104,18 +105,18 @@ function Keypad({
 
 // ── Numeric Display ────────────────────────────────────────────────────
 function NumDisplay({ digits }: { digits: string }) {
-  const MAX = 4;
+  const MAX = 2; // numbers 1-20, always 2 digits max
   const chars = digits.padEnd(MAX, "_").split("");
   return (
-    <div className="flex items-center justify-center gap-1.5 py-3">
+    <div className="flex items-center justify-center gap-3 py-3">
       {chars.map((ch, i) => (
         <span
           key={i}
           className="font-mono font-extrabold leading-none"
           style={{
-            fontSize: 56,
+            fontSize: 80,
             color: ch === "_" ? "var(--ink-mute)" : "var(--ink)",
-            minWidth: 34,
+            minWidth: 48,
             textAlign: "center",
           }}
         >
@@ -162,6 +163,131 @@ function SourcePicker({
   );
 }
 
+// ── History entry ─────────────────────────────────────────────────────
+interface HistoryEntry {
+  key: string;
+  number: number;
+  label: string;
+  teamCode: string;
+  wasNew: boolean;
+  count: number; // owned_count AFTER increment
+}
+
+// ── Team Picker Panel ─────────────────────────────────────────────────
+function TeamPickerPanel({
+  teams,
+  currentCode,
+  onSelect,
+  onClose,
+}: {
+  teams: { code: string; name: string }[];
+  currentCode: string | null;
+  onSelect: (code: string) => void;
+  onClose: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // small delay so the absolute overlay is painted before focusing
+    const t = setTimeout(() => inputRef.current?.focus(), 60);
+    return () => clearTimeout(t);
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return teams;
+    return teams.filter(
+      (t) => t.name.toLowerCase().includes(q) || t.code.toLowerCase().includes(q)
+    );
+  }, [search, teams]);
+
+  return (
+    <div className="absolute inset-0 z-10 flex flex-col bg-bg text-ink">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 pt-14 pb-3 flex-shrink-0">
+        <button
+          onClick={onClose}
+          disabled={!currentCode}
+          className="w-11 h-11 flex items-center justify-center rounded-full bg-elev text-ink-soft active:scale-95 transition-transform flex-shrink-0 disabled:opacity-30 disabled:pointer-events-none"
+        >
+          <X size={20} strokeWidth={2} />
+        </button>
+        <div>
+          <h2 className="font-display font-bold text-xl text-ink leading-tight">
+            Escolher seleção
+          </h2>
+          <p className="font-sans text-xs text-ink-mute">
+            {teams.length} seleções disponíveis
+          </p>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="px-4 pb-3 flex-shrink-0">
+        <div
+          className="flex items-center gap-2 rounded-2xl px-4 py-0"
+          style={{ background: "var(--elev)", border: "1px solid var(--line)" }}
+        >
+          <input
+            ref={inputRef}
+            type="search"
+            placeholder="Buscar seleção ou código…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 bg-transparent font-sans text-base text-ink placeholder:text-ink-mute outline-none min-h-[44px]"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="text-ink-mute shrink-0 p-1 min-w-[32px] min-h-[32px] flex items-center justify-center">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Team list */}
+      <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-1">
+        {filtered.length === 0 ? (
+          <p className="text-center py-8 font-sans text-sm text-ink-mute">
+            Nenhuma seleção encontrada
+          </p>
+        ) : (
+          filtered.map((t) => {
+            const active = t.code === currentCode;
+            return (
+              <button
+                key={t.code}
+                onClick={() => { onSelect(t.code); onClose(); }}
+                className="w-full flex items-center gap-3 rounded-xl px-4 text-left min-h-[52px] transition-colors active:scale-[.98]"
+                style={{
+                  background: active ? "var(--green)" : "var(--elev)",
+                  border: "1px solid var(--line)",
+                  color: active ? "white" : "var(--ink)",
+                }}
+              >
+                <span
+                  className="font-mono font-extrabold text-xs rounded-md px-2 py-1 flex-shrink-0 min-w-[44px] text-center"
+                  style={
+                    active
+                      ? { background: "rgba(255,255,255,0.22)", color: "white" }
+                      : { background: "var(--bg)", color: "var(--ink-mute)" }
+                  }
+                >
+                  {t.code}
+                </span>
+                <span className="font-display font-semibold text-base flex-1 truncate">
+                  {t.name}
+                </span>
+                {active && <Check size={18} strokeWidth={2.5} className="shrink-0" />}
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Register Overlay ───────────────────────────────────────────────────
 function RegisterOverlay({
   collectionId,
@@ -180,9 +306,30 @@ function RegisterOverlay({
 }) {
   const [digits, setDigits] = useState("");
   const [sourceId, setSourceId] = useState("");
-  const [feedbackOk, setFeedbackOk] = useState<boolean | null>(null);
-  const [feedbackText, setFeedbackText] = useState("");
+  const [selectedTeamCode, setSelectedTeamCode] = useState<string | null>(null);
+  // Open picker immediately on mount — user must choose a team first
+  const [pickerOpen, setPickerOpen] = useState(true);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const pending = useRef(new Set<string>());
+
+  // Derive sorted unique team list from stickers
+  const teams = useMemo(() => {
+    const map = new Map<string, { code: string; name: string }>();
+    for (const s of stickers) {
+      if (!map.has(s.teamCode)) map.set(s.teamCode, { code: s.teamCode, name: s.teamName });
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  }, [stickers]);
+
+  const selectedTeam = selectedTeamCode ? (teams.find((t) => t.code === selectedTeamCode) ?? null) : null;
+
+  // Live preview: team + number → unique sticker
+  const preview = useMemo(() => {
+    if (!selectedTeamCode || !digits) return null;
+    const num = parseInt(digits, 10);
+    if (isNaN(num) || num < 1) return null;
+    return stickers.find((s) => s.teamCode === selectedTeamCode && s.number === num) ?? null;
+  }, [selectedTeamCode, digits, stickers]);
 
   const handleKey = useCallback(
     async (k: string) => {
@@ -191,23 +338,20 @@ function RegisterOverlay({
         return;
       }
       if (k === "✓") {
-        const num = parseInt(digits, 10);
-        if (!digits || isNaN(num)) return;
-
-        const sticker = stickers.find((s) => s.number === num);
-        if (!sticker) {
-          setFeedbackOk(false);
-          setFeedbackText(`#${num} não está no álbum`);
-          return;
-        }
+        if (!preview) return;
+        const sticker = preview;
         if (pending.current.has(sticker.id)) return;
 
         const wasNew = sticker.owned_count === 0;
+        const newCount = sticker.owned_count + 1;
+        const entryKey = `${sticker.id}-${Date.now()}`;
+
+        // Optimistic update — keep team, clear number only
         onIncrement(sticker.id);
-        setFeedbackOk(true);
-        setFeedbackText(
-          `#${num} ${sticker.label} (${sticker.teamName})${wasNew ? " — NOVA! 🎉" : " — repetida"}`
-        );
+        setHistory((h) => [
+          { key: entryKey, number: sticker.number, label: sticker.label, teamCode: sticker.teamCode, wasNew, count: newCount },
+          ...h,
+        ].slice(0, 10));
         setDigits("");
 
         pending.current.add(sticker.id);
@@ -221,24 +365,24 @@ function RegisterOverlay({
           });
         } catch {
           onDecrement(sticker.id);
-          setFeedbackOk(false);
-          setFeedbackText(`Erro ao salvar #${num}. Tente novamente.`);
+          setHistory((h) => h.filter((e) => e.key !== entryKey));
+          toast.error(`Erro ao salvar ${sticker.teamCode} #${sticker.number} — tente novamente`);
         } finally {
           pending.current.delete(sticker.id);
         }
         return;
       }
-      if (digits.length < 4) {
+      if (digits.length < 2) {
         setDigits((d) => d + k);
-        setFeedbackOk(null);
-        setFeedbackText("");
       }
     },
-    [digits, stickers, collectionId, sourceId, onIncrement, onDecrement]
+    [preview, digits, collectionId, sourceId, onIncrement, onDecrement]
   );
 
+  // Physical keyboard — disabled when picker is open
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (pickerOpen) return;
       if (e.key === "Escape") { onClose(); return; }
       if (e.key === "Enter") { handleKey("✓"); return; }
       if (e.key === "Backspace") { handleKey("⌫"); return; }
@@ -246,10 +390,13 @@ function RegisterOverlay({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, handleKey]);
+  }, [onClose, handleKey, pickerOpen]);
 
   return (
-    <div data-theme="dark" className="fixed inset-0 z-50 flex flex-col bg-bg text-ink">
+    <div data-theme="dark" className="fixed inset-0 z-50 flex flex-col bg-bg text-ink overflow-hidden">
+
+      {/* ── Main register panel ─────────────────────────────────── */}
+      {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-14 pb-2 flex-shrink-0">
         <button
           onClick={onClose}
@@ -261,29 +408,145 @@ function RegisterOverlay({
           <h2 className="font-display font-bold text-xl text-ink leading-tight">
             Registrar figurinha
           </h2>
-          <p className="font-sans text-xs text-ink-mute">Digite o número e confirme</p>
+          <p className="font-sans text-xs text-ink-mute">
+            Seleção + número do verso da figurinha
+          </p>
         </div>
+      </div>
+
+      {/* Team row — tappable pill to select/change team */}
+      <div className="px-4 pb-2 flex-shrink-0">
+        <button
+          onClick={() => setPickerOpen(true)}
+          className="w-full flex items-center gap-3 rounded-2xl px-4 min-h-[52px] text-left transition-colors active:opacity-75"
+          style={{ background: "var(--elev)", border: selectedTeam ? "1px solid var(--green)" : "1px dashed var(--line)" }}
+        >
+          {selectedTeam ? (
+            <>
+              <span
+                className="font-mono font-extrabold text-xs rounded-md px-2 py-1 shrink-0"
+                style={{ background: "var(--green)", color: "white" }}
+              >
+                {selectedTeam.code}
+              </span>
+              <span className="font-display font-bold text-base text-ink flex-1 truncate">
+                {selectedTeam.name}
+              </span>
+              <span className="font-sans text-xs text-ink-mute shrink-0">Trocar</span>
+            </>
+          ) : (
+            <>
+              <span className="font-sans font-semibold text-base text-ink-mute flex-1">
+                Escolher seleção…
+              </span>
+              <span className="font-mono text-ink-mute text-sm">→</span>
+            </>
+          )}
+        </button>
       </div>
 
       <SourcePicker sources={sources} value={sourceId} onChange={setSourceId} />
 
+      {/* Spacer */}
       <div className="flex-1" />
 
+      {/* Number display */}
       <NumDisplay digits={digits} />
 
-      <div className="h-8 flex items-center justify-center px-5 flex-shrink-0">
-        {feedbackOk !== null && feedbackText && (
-          <p
-            className="font-sans text-sm font-semibold text-center leading-snug"
-            style={{ color: feedbackOk ? "var(--green)" : "var(--magenta)" }}
-          >
-            {feedbackText}
+      {/* Live preview — fixed height keeps layout stable */}
+      <div className="h-14 flex items-center justify-center px-5 flex-shrink-0">
+        {preview ? (
+          <div className="flex items-center gap-3 w-full max-w-sm">
+            <span
+              className="font-mono font-extrabold text-xs rounded-md px-2 py-1 flex-shrink-0"
+              style={{ background: "var(--elev)", border: "1px solid var(--line)", color: "var(--ink-mute)" }}
+            >
+              {preview.teamCode} #{preview.number}
+            </span>
+            <span className="font-sans font-semibold text-sm text-ink truncate flex-1 min-w-0">
+              {preview.label}
+            </span>
+            {preview.owned_count === 0 ? (
+              <span
+                className="font-display font-extrabold text-xs rounded-full px-3 py-1 flex-shrink-0 whitespace-nowrap"
+                style={{ background: "var(--green)", color: "white" }}
+              >
+                FALTAVA!
+              </span>
+            ) : (
+              <span
+                className="font-display font-extrabold text-xs rounded-full px-3 py-1 flex-shrink-0 whitespace-nowrap"
+                style={{ background: "var(--magenta)", color: "white" }}
+              >
+                JÁ TENHO ×{preview.owned_count}
+              </span>
+            )}
+          </div>
+        ) : selectedTeamCode && digits.length > 0 ? (
+          <p className="font-sans text-sm text-ink-mute">
+            {selectedTeamCode} #{digits} — número não encontrado
           </p>
-        )}
+        ) : !selectedTeamCode ? (
+          <p className="font-sans text-sm text-ink-mute">
+            Selecione uma seleção para começar
+          </p>
+        ) : null}
       </div>
 
-      <Keypad onKey={handleKey} canConfirm={digits.length > 0} />
-      <div className="h-8 flex-shrink-0" />
+      {/* Keypad — confirm only when preview has a valid sticker */}
+      <Keypad onKey={handleKey} canConfirm={preview !== null} />
+
+      {/* Session history */}
+      {history.length > 0 && (
+        <div className="flex-shrink-0 px-4 pt-2 pb-1">
+          <p className="font-sans text-[10px] font-semibold uppercase tracking-widest text-ink-mute mb-1.5">
+            Acabei de marcar
+          </p>
+          <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+            {history.map((e) => (
+              <div
+                key={e.key}
+                className="flex-shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-2"
+                style={{ background: "var(--elev)", border: "1px solid var(--line)" }}
+              >
+                <span className="font-mono text-[11px] text-ink-mute flex-shrink-0">
+                  {e.teamCode}·{e.number}
+                </span>
+                <span className="font-sans text-xs text-ink truncate max-w-[80px]">
+                  {e.label}
+                </span>
+                {e.wasNew ? (
+                  <span
+                    className="font-display font-extrabold text-[10px] rounded-full px-2 py-0.5 flex-shrink-0"
+                    style={{ background: "var(--green)", color: "white" }}
+                  >
+                    NOVA
+                  </span>
+                ) : (
+                  <span
+                    className="font-mono font-extrabold text-[10px] rounded-full px-2 py-0.5 flex-shrink-0"
+                    style={{ background: "var(--magenta)", color: "white" }}
+                  >
+                    ×{e.count}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="h-6 flex-shrink-0" />
+
+      {/* ── Team picker panel — absolute overlay ─────────────── */}
+      {pickerOpen && (
+        <TeamPickerPanel
+          teams={teams}
+          currentCode={selectedTeamCode}
+          onSelect={setSelectedTeamCode}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }

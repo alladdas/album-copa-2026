@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, Store, ArrowLeftRight, Wallet, Telescope } from "lucide-react";
+import { BookOpen, Store, ArrowLeftRight, Wallet, Telescope, Settings } from "lucide-react";
 import { ProgressAlbum } from "@/components/ui/progress-album";
 import { StickerCard } from "@/components/album/StickerCard";
 
@@ -141,6 +141,13 @@ export function DashboardContent({
     <div className="flex flex-col min-h-screen bg-bg">
       {/* ── Greeting header ──────────────────────────────────────── */}
       <div className="relative overflow-hidden bg-green px-5 pt-14 pb-6 bg-chevrons">
+        <Link
+          href="/config"
+          aria-label="Configurações"
+          className="absolute right-4 top-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/15 text-white"
+        >
+          <Settings size={18} strokeWidth={2} />
+        </Link>
         <p className="font-sans text-xs font-semibold uppercase tracking-widest text-white/60 mb-1">
           {collectionName}
         </p>

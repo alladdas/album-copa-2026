@@ -3,6 +3,7 @@ import { spaceGrotesk, dmSans, jetbrains } from "./fonts";
 import "./globals.css";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Toaster } from "@/components/ui/sonner";
+import { ServiceWorkerRegister } from "@/components/layout/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
   title: "Álbum Copa 2026",
@@ -37,6 +38,7 @@ export default function RootLayout({
         <main className="min-h-screen pb-24 max-w-lg mx-auto">{children}</main>
         <BottomNav />
         <Toaster richColors position="top-center" />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

@@ -425,6 +425,32 @@ export async function exportCollection(
   };
 }
 
+export async function updateCollectionName(
+  collectionId: string,
+  name: string
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("collections")
+    .update({ name })
+    .eq("id", collectionId);
+  if (error) throw error;
+}
+
+export async function updateStickerLabel(
+  stickerId: string,
+  collectionId: string,
+  label: string
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("stickers")
+    .update({ label, updated_at: new Date().toISOString() })
+    .eq("id", stickerId)
+    .eq("collection_id", collectionId);
+  if (error) throw error;
+}
+
 export async function importCollection(
   collectionId: string,
   data: ExportData

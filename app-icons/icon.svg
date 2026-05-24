@@ -1,0 +1,35 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1FB257"></stop>
+      <stop offset="55%" stop-color="#27C262"></stop>
+      <stop offset="100%" stop-color="#149A47"></stop>
+    </linearGradient>
+    <pattern id="chev" x="0" y="0" width="24" height="12" patternUnits="userSpaceOnUse">
+      <path d="M0 0 L12 12 L24 0" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"></path>
+    </pattern>
+  </defs>
+  <rect x="0" y="0" width="200" height="200" rx="40" fill="url(#bg)"></rect>
+  <rect x="0" y="0" width="200" height="200" rx="40" fill="url(#chev)"></rect>
+  <path d="M100 28 L172 100 L100 172 L28 100 Z" fill="#F2B33D" fill-opacity="0.85"></path>
+  <g transform="translate(28, 36) scale(0.72)">
+    <ellipse cx="56" cy="62" rx="15" ry="12" fill="#8A5A30"></ellipse>
+    <ellipse cx="144" cy="62" rx="15" ry="12" fill="#8A5A30"></ellipse>
+    <ellipse cx="56" cy="63" rx="7" ry="6" fill="#1A1410"></ellipse>
+    <ellipse cx="144" cy="63" rx="7" ry="6" fill="#1A1410"></ellipse>
+    <ellipse cx="100" cy="112" rx="76" ry="62" fill="#B07A4A"></ellipse>
+    <ellipse cx="100" cy="140" rx="58" ry="32" fill="#E8C99E" fill-opacity="0.6"></ellipse>
+    <ellipse cx="100" cy="142" rx="44" ry="30" fill="#DDB58A"></ellipse>
+    <ellipse cx="55" cy="128" rx="10" ry="6" fill="#E89F8A" fill-opacity="0.55"></ellipse>
+    <ellipse cx="145" cy="128" rx="10" ry="6" fill="#E89F8A" fill-opacity="0.55"></ellipse>
+    <circle cx="78" cy="102" r="9" fill="#1A1410"></circle>
+    <circle cx="122" cy="102" r="9" fill="#1A1410"></circle>
+    <circle cx="81" cy="99" r="3" fill="#fff"></circle>
+    <circle cx="125" cy="99" r="3" fill="#fff"></circle>
+    <ellipse cx="91" cy="138" rx="2.5" ry="3.5" fill="#1A1410"></ellipse>
+    <ellipse cx="109" cy="138" rx="2.5" ry="3.5" fill="#1A1410"></ellipse>
+    <path d="M82 154 Q100 166 118 154" stroke="#1A1410" stroke-width="3" fill="none" stroke-linecap="round"></path>
+    <rect x="96" y="158" width="8" height="6" rx="1" fill="#FFFBF1"></rect>
+  </g>
+</svg>
