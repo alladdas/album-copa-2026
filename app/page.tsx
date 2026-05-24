@@ -1,13 +1,36 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { FirstAccessClient } from "@/components/FirstAccessClient";
+import { DashboardContent } from "@/components/dashboard/DashboardContent";
+import type { User } from "@supabase/supabase-js";
+
+// ── Helpers ───────────────────────────────────────────────────────────
+
+function getGreetingName(user: User): string {
+  const meta = user.user_metadata ?? {};
+  // Try common metadata fields set by providers or by the user
+  const fullName: string =
+    meta.full_name ?? meta.name ?? meta.display_name ?? "";
+  if (fullName.trim()) {
+    return fullName.trim().split(/\s+/)[0]; // first name only
+  }
+  // Fall back to email local-part, capitalised
+  const local = (user.email ?? "anônimo").split("@")[0];
+  const first = local.split(/[._\-+]/)[0];
+  return first.charAt(0).toUpperCase() + first.slice(1);
+}
+
+// ── Page ──────────────────────────────────────────────────────────────
 
 export default async function HomePage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
 
+  // Check for existing collection
   const { data: collection } = await supabase
     .from("collections")
     .select("id, name, total_stickers")
@@ -19,45 +42,94 @@ export default async function HomePage() {
     return <FirstAccessClient userId={user.id} />;
   }
 
-  // Dashboard placeholder (Fase 5)
+  // ── Parallel data fetching ────────────────────────────────────────
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const [stickersRes, purchasesRes, revealedRes] = await Promise.all([
+    // Minimal fields for aggregate stats
+    supabase
+      .from("stickers")
+      .select("owned_count")
+      .eq("collection_id", collection.id),
+
+    // Purchases for financial totals
+    supabase
+      .from("purchases")
+      .select("amount_cents, packs")
+      .eq("collection_id", collection.id),
+
+    // Revealed today with team info (small set)
+    supabase
+      .from("stickers")
+      .select("id, number, label, is_foil, owned_count, teams(code, name)")
+      .eq("collection_id", collection.id)
+      .gte("owned_count", 1)
+      .gte("updated_at", todayStart.toISOString())
+      .order("updated_at", { ascending: false })
+      .limit(20),
+  ]);
+
+  // ── Aggregate stats ───────────────────────────────────────────────
+  const stickers = stickersRes.data ?? [];
+  const purchases = purchasesRes.data ?? [];
+
+  const totalStickers = collection.total_stickers ?? 980;
+  const owned = stickers.filter((s) => s.owned_count >= 1).length;
+  const missing = stickers.filter((s) => s.owned_count === 0).length;
+  const duplicates = stickers.reduce(
+    (acc, s) => acc + Math.max(0, s.owned_count - 1),
+    0
+  );
+  const totalSpentCents = purchases.reduce(
+    (acc, p) => acc + (p.amount_cents ?? 0),
+    0
+  );
+  const totalPacks = purchases.reduce((acc, p) => acc + (p.packs ?? 0), 0);
+  const avgCostPerStickerCents =
+    owned > 0 && totalSpentCents > 0
+      ? Math.round(totalSpentCents / owned)
+      : null;
+  const projectedRemainingCents =
+    avgCostPerStickerCents != null
+      ? Math.round(missing * avgCostPerStickerCents)
+      : null;
+
+  // ── Revealed today ────────────────────────────────────────────────
+  type RevealedRow = {
+    id: string;
+    number: number;
+    label: string;
+    is_foil: boolean;
+    owned_count: number;
+    teams: { code: string; name: string } | null;
+  };
+
+  const revealedToday = ((revealedRes.data ?? []) as unknown as RevealedRow[]).map(
+    (row) => ({
+      id: row.id,
+      number: row.number,
+      label: row.label,
+      is_foil: row.is_foil,
+      owned_count: row.owned_count,
+      teamCode: row.teams?.code ?? "SPECIAL",
+      teamName: row.teams?.name ?? "Especiais",
+    })
+  );
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] px-5 py-10 gap-6">
-      <div className="w-full max-w-sm space-y-4">
-        <div className="text-center">
-          <h1 className="font-display font-bold text-3xl text-ink">🏆 Álbum Copa 2026</h1>
-          <p className="text-ink-mute text-sm mt-1">{collection.name}</p>
-        </div>
-
-        <div
-          className="rounded-xl p-5 space-y-2 bg-elev shadow-md"
-          style={{ border: "1px solid var(--line)" }}
-        >
-          <p className="font-display font-bold text-ink">Dashboard em breve</p>
-          <p className="text-sm text-ink-mute">
-            O painel completo com estatísticas, gráficos e projeção chega na Fase 5.
-            Use o menu abaixo para navegar.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { href: "/album",   icon: "📒", label: "Meu Álbum" },
-            { href: "/banca",   icon: "🏪", label: "Modo Banca" },
-            { href: "/trocas",  icon: "🔄", label: "Trocas" },
-            { href: "/financas",icon: "💰", label: "Gastos" },
-          ].map(({ href, icon, label }) => (
-            <a
-              key={href}
-              href={href}
-              className="flex flex-col items-center justify-center gap-2 rounded-xl py-5 bg-elev shadow-sm hover:bg-sunken transition-colors"
-              style={{ border: "1px solid var(--line)" }}
-            >
-              <span className="text-3xl">{icon}</span>
-              <span className="font-display font-semibold text-sm text-ink">{label}</span>
-            </a>
-          ))}
-        </div>
-      </div>
-    </div>
+    <DashboardContent
+      userName={getGreetingName(user)}
+      collectionName={collection.name}
+      totalStickers={totalStickers}
+      owned={owned}
+      missing={missing}
+      duplicates={duplicates}
+      totalSpentCents={totalSpentCents}
+      totalPacks={totalPacks}
+      avgCostPerStickerCents={avgCostPerStickerCents}
+      projectedRemainingCents={projectedRemainingCents}
+      revealedToday={revealedToday}
+    />
   );
 }
