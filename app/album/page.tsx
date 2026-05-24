@@ -25,7 +25,7 @@ export default async function AlbumPage() {
       .order("order_index"),
     supabase
       .from("stickers")
-      .select("*")
+      .select("id, number, label, team_id, sticker_type, is_foil, owned_count")
       .eq("collection_id", collection.id)
       .order("number"),
   ]);

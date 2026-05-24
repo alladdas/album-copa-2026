@@ -23,7 +23,6 @@ export function StickerCell({ sticker, team, isSelected, revealing, onSelect }: 
       team={team ?? { code: "SPECIAL", name: "Especiais" }}
       number={sticker.number}
       label={sticker.label}
-      imageUrl={sticker.image_url}
       count={sticker.owned_count}
       foil={sticker.is_foil}
       size="sm"

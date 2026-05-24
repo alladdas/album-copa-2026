@@ -1,12 +1,17 @@
 /**
  * scripts/import-cromos.ts
  *
- * Lê cromos/, casa cada arquivo com a figurinha no banco, comprime para WebP
- * e faz upload pro bucket "sticker-photos" no Supabase Storage.
- * Grava a URL pública em stickers.image_url.
+ * Lê cromos/, comprime para WebP e faz upload pro bucket "sticker-photos"
+ * no Supabase Storage em paths COMPARTILHADOS ({CODE}_{NN}.webp, sem prefixo
+ * de coleção). Assim todos os usuários veem as imagens automaticamente —
+ * basta rodar uma vez; o frontend deriva a URL de team.code + number.
  *
  * Uso:
  *   npm run import-cromos -- <collection-id>
+ *
+ * O collection-id ainda é necessário para consultar times e figurinhas no
+ * banco (e atualizar image_url como registro de conclusão). Não afeta o path
+ * no Storage.
  *
  * Requer no .env.local:
  *   NEXT_PUBLIC_SUPABASE_URL
@@ -127,9 +132,14 @@ async function main() {
       continue;
     }
 
-    // Idempotente: pula se já tem URL
-    if (sticker.image_url) {
-      console.log(`  ↩  ${file}  já importada, pulando`);
+    // Idempotente: pula se o arquivo já existe no Storage (path compartilhado).
+    // Não usa image_url do banco pois ela só é setada na coleção que rodou o import.
+    const sharedPath = `${code}_${pad2(number)}.webp`;
+    const { data: existing } = await supabase.storage.from(BUCKET).list("", {
+      search: sharedPath,
+    });
+    if (existing?.some((f) => f.name === sharedPath)) {
+      console.log(`  ↩  ${file}  já no Storage, pulando`);
       report.skipped++;
       continue;
     }
@@ -144,8 +154,7 @@ async function main() {
 
       report.totalBytes += compressed.length;
 
-      // Upload (upsert = idempotente se rodar de novo com --force removendo a URL)
-      const storagePath = `${COLLECTION_ID}/${code}_${pad2(number)}.webp`;
+      const storagePath = sharedPath;
       const { error: uploadErr } = await supabase.storage
         .from(BUCKET)
         .upload(storagePath, compressed, {

@@ -37,7 +37,7 @@ export default async function BancaPage() {
       .order("number"),
     supabase
       .from("sources")
-      .select("*")
+      .select("id, name, kind, notes")
       .eq("collection_id", collection.id)
       .order("name"),
   ]);

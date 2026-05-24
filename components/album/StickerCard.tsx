@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { teamColorVar } from "@/lib/team-colors";
 
@@ -10,7 +11,6 @@ export interface StickerCardProps {
   team: { code: string; name: string };
   number: number;
   label: string;
-  imageUrl?: string | null;
   count?: number;
   foil?: boolean;
   size?: "sm" | "md";
@@ -19,12 +19,21 @@ export interface StickerCardProps {
   onClick?: () => void;
 }
 
+// URL is derived from team.code + number so every collection shares the same images.
+// Storage path format: sticker-photos/{CODE}_{NN:02d}.webp  (no collection prefix)
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+
+function derivedStickerUrl(teamCode: string, number: number): string | null {
+  if (!SUPABASE_URL) return null;
+  const pad = String(number).padStart(2, "0");
+  return `${SUPABASE_URL}/storage/v1/object/public/sticker-photos/${teamCode}_${pad}.webp`;
+}
+
 export function StickerCard({
   state,
   team,
   number,
   label,
-  imageUrl,
   count = 1,
   foil = false,
   size = "md",
@@ -32,10 +41,14 @@ export function StickerCard({
   selected = false,
   onClick,
 }: StickerCardProps) {
-  const isLocked = state === "locked";
-  const isDup    = state === "duplicate";
-  const hasImage = !!imageUrl;
-  const numStr   = String(number).padStart(3, "0");
+  // Falls back to placeholder when the image 404s or hasn't been uploaded yet
+  const [imgError, setImgError] = useState(false);
+
+  const isLocked  = state === "locked";
+  const isDup     = state === "duplicate";
+  const imageUrl  = derivedStickerUrl(team.code, number);
+  const hasImage  = !!imageUrl && !imgError;
+  const numStr    = String(number).padStart(3, "0");
 
   return (
     <button
@@ -59,14 +72,17 @@ export function StickerCard({
     >
       {hasImage ? (
         // ── IMAGE CARD ──────────────────────────────────────────────────
-        // Full photo fills the card; CSS filter drives the locked/reveal effect.
+        // CSS filter drives locked (grayscale+dim) → owned (full color) effect.
         // The sc-reveal animation on the card handles scale+glow; the image's
         // own transition handles grayscale→color independently at 420ms.
+        // onError falls back silently to the placeholder branch via imgError state.
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageUrl}
             alt=""
+            loading="lazy"
+            onError={() => setImgError(true)}
             className="absolute inset-0 w-full h-full object-cover pointer-events-none"
             style={{
               filter: isLocked
@@ -142,7 +158,7 @@ export function StickerCard({
           </div>
         </>
       ) : (
-        // ── PLACEHOLDER CARD (no image) ─────────────────────────────────
+        // ── PLACEHOLDER CARD (image not uploaded or failed to load) ────
         <>
           {/* TOP — colored band (62% height) */}
           <div
