@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\joaol\\\\projetoalbum\\\\supabase\")",
+      "PowerShell(Move-Item \"C:\\\\Users\\\\joaol\\\\projetoalbum\\\\schema.sql\" \"C:\\\\Users\\\\joaol\\\\projetoalbum\\\\supabase\\\\schema.sql\" -Force)",
+      "PowerShell(Move-Item \"C:\\\\Users\\\\joaol\\\\projetoalbum\\\\seed_data.sql\" \"C:\\\\Users\\\\joaol\\\\projetoalbum\\\\supabase\\\\seed_data.sql\" -Force)",
+      "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\joaol\\\\projetoalbum\\\\lib\\\\supabase\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\joaol\\\\projetoalbum\\\\types\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\joaol\\\\projetoalbum\\\\components\\\\layout\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\joaol\\\\projetoalbum\\\\app\\\\album\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\joaol\\\\projetoalbum\\\\app\\\\banca\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\joaol\\\\projetoalbum\\\\app\\\\trocas\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\joaol\\\\projetoalbum\\\\app\\\\financas\")"
+    ]
+  }
+}

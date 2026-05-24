@@ -1,8 +1,13 @@
+/* =====================================================================
+   ALBUM COPA — globals.css
+   Cole no lugar de app/globals.css. As classes Tailwind referenciam estas
+   CSS vars através de tailwind.config.ts.
+   ===================================================================== */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ── Carnaval de Bandeiras — tokens ───────────────────────────────── */
+/* ── Tokens ───────────────────────────────────────────────────────── */
 :root {
   /* Surfaces */
   --bg:           #FFF7E8;
@@ -49,14 +54,14 @@
   --shadow-lg: 0 2px 4px rgba(26,20,16,.08), 0 12px 28px rgba(26,20,16,.10);
   --shadow-focus: 0 0 0 3px rgba(31,178,87,.30);
 
-  /* Fonts (CSS vars set via next/font variables in layout.tsx) */
+  /* Fonts (vars setadas em app/layout.tsx via next/font) */
   --font-display: "Space Grotesk", system-ui, sans-serif;
   --font-body:    "DM Sans", system-ui, sans-serif;
   --font-mono:    "JetBrains Mono", ui-monospace, monospace;
 
   --hit-min: 44px;
 
-  /* Team palette — 12 curated tokens (NOT real flags) */
+  /* Team palette — 12 cores curadas (NÃO copiar bandeiras reais) */
   --team-ruby:    #C42847;
   --team-saffron: #F2B33D;
   --team-emerald: #1FB257;
@@ -69,31 +74,9 @@
   --team-olive:   #6A8C2E;
   --team-crimson: #9E1B32;
   --team-slate:   #334155;
-
-  /* ── Legacy shadcn/ui compat vars (existing components) ─────────── */
-  --background:             38 100% 96%;
-  --foreground:             27 40% 8%;
-  --card:                   0 0% 100%;
-  --card-foreground:        27 40% 8%;
-  --popover:                0 0% 100%;
-  --popover-foreground:     27 40% 8%;
-  --primary:                142 69% 41%;
-  --primary-foreground:     0 0% 100%;
-  --secondary:              38 53% 89%;
-  --secondary-foreground:   27 40% 8%;
-  --muted:                  38 53% 89%;
-  --muted-foreground:       30 9% 49%;
-  --accent:                 38 53% 89%;
-  --accent-foreground:      27 40% 8%;
-  --destructive:            340 73% 55%;
-  --destructive-foreground: 0 0% 100%;
-  --border:                 38 20% 87%;
-  --input:                  38 20% 87%;
-  --ring:                   142 69% 41%;
-  --radius:                 0.875rem;
 }
 
-/* ── Dark scope (Modo Banca and any data-theme="dark" wrappers) ───── */
+/* ── Dark scope (use em rotas tipo Modo Banca) ────────────────────── */
 [data-theme="dark"] {
   --bg:        #16210F;
   --bg-elev:   #1F2E15;
@@ -102,16 +85,6 @@
   --ink-soft:  #D8D2C5;
   --ink-mute:  #9CA396;
   --line:      rgba(255,251,241,.12);
-
-  /* Legacy compat in dark context */
-  --background:   120 30% 10%;
-  --foreground:   43 100% 97%;
-  --card:         120 22% 14%;
-  --card-foreground: 43 100% 97%;
-  --border:       0 0% 22%;
-  --input:        0 0% 22%;
-  --muted:        120 15% 18%;
-  --muted-foreground: 120 5% 62%;
 }
 
 /* ── Base ─────────────────────────────────────────────────────────── */
@@ -122,7 +95,7 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Accessible focus ring on all interactive elements */
+/* Foco visível e acessível em todo botão/link */
 :focus-visible {
   outline: none;
   box-shadow: var(--shadow-focus);
@@ -139,7 +112,7 @@ html, body {
 .sticker-card { transition: filter .35s, transform .25s, box-shadow .25s; }
 .sticker-card.is-revealing { animation: sc-reveal .42s cubic-bezier(.2,.7,.3,1); }
 
-/* Chevron pattern utility */
+/* Chevron pattern utility (use como background em headers) */
 .bg-chevrons {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='16' viewBox='0 0 32 16'><path d='M0 0 L16 16 L32 0' fill='none' stroke='rgba(255,255,255,0.22)' stroke-width='1.5'/></svg>");
   background-size: 32px 16px;

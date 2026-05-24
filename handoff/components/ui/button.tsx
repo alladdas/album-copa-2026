@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * components/ui/button.tsx
+ * Variantes do app — `primary` = verde-bandeira (CTA padrão).
+ * Compatível com a base shadcn/ui (props passam para <button>).
+ */
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
@@ -21,19 +26,12 @@ export const buttonVariants = cva(
         ghost:     "bg-transparent text-ink hover:bg-ink/5",
         danger:    "bg-magenta text-white hover:brightness-[.95]",
         dark:      "bg-ink text-ink-invert hover:bg-black",
-        // legacy aliases so old code with variant="default" / variant="outline" still renders
-        default:   "bg-green text-white shadow-ground hover:brightness-[.97]",
-        destructive: "bg-magenta text-white hover:brightness-[.95]",
-        outline:   "bg-elev text-ink border-[var(--line-strong)] hover:bg-sunken",
-        link:      "bg-transparent text-green underline-offset-4 hover:underline",
       },
       size: {
-        sm:      "h-9 px-3.5 text-sm",
-        md:      "h-12 px-5 text-base",
-        lg:      "h-14 px-6 text-lg",
-        icon:    "h-11 w-11 p-0",
-        // legacy aliases
-        default: "h-12 px-5 text-base",
+        sm: "h-9 px-3.5 text-sm",
+        md: "h-12 px-5 text-base",
+        lg: "h-14 px-6 text-lg",
+        icon: "h-11 w-11 p-0",
       },
       full: { true: "w-full" },
     },
