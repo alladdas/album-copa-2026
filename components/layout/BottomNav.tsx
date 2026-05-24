@@ -16,11 +16,16 @@ const navItems = [
 export function BottomNav() {
   const pathname = usePathname();
 
+  // Oculta na tela de login e callback
+  if (pathname.startsWith("/login") || pathname.startsWith("/auth")) return null;
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
         {navItems.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || (href !== "/" && pathname.startsWith(href));
+          const active =
+            pathname === href ||
+            (href !== "/" && pathname.startsWith(href));
           return (
             <Link
               key={href}
