@@ -29,7 +29,7 @@ export default async function FinancasPage() {
       .order("date", { ascending: false }),
     supabase
       .from("sources")
-      .select("*")
+      .select("id, name, kind, notes")
       .eq("collection_id", collection.id)
       .order("name"),
   ]);

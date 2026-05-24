@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useTransition, useRef, useEffect } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { toast } from "sonner";
 import { Search, X, Check, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,11 @@ import type { Team, Sticker } from "@/types/database";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = "all" | "missing" | "owned" | "duplicate";
+
+// Virtual row types — the grid is flattened into headers + card batches for the virtualizer
+type VRowHeader = { kind: "header"; teamId: string; owned: number; total: number };
+type VRowCards  = { kind: "cards"; stickers: Sticker[] };
+type VRow = VRowHeader | VRowCards;
 
 const STEPPER_TIMEOUT_MS = 4000;
 const REVEAL_DURATION_MS = 420;
@@ -220,6 +226,7 @@ export function AlbumClient({ teams, stickers: initialStickers }: Props) {
   const pendingRef = useRef<Set<string>>(new Set());
   const autoCloseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
 
   const teamsById = useMemo(
     () => new Map(teams.map((t) => [t.id, t])),
@@ -283,6 +290,11 @@ export function AlbumClient({ teams, stickers: initialStickers }: Props) {
     };
   }, []);
 
+  // Scroll to top when filter/search changes so first result is always visible
+  useEffect(() => {
+    if (parentRef.current) parentRef.current.scrollTop = 0;
+  }, [statusFilter, search, selectedTeams]);
+
   // Filtered sticker list — team filter or search; status on top
   const filtered = useMemo(() => {
     let list = stickers;
@@ -324,6 +336,37 @@ export function AlbumClient({ teams, stickers: initialStickers }: Props) {
       .map(([teamId, stks]) => ({ team: teamsById.get(teamId)!, stickers: stks }))
       .filter((g) => g.team !== undefined);
   }, [filtered, search, teamsById]);
+
+  // Flatten groups/search results into virtual rows (header + batches of 4 cards)
+  const activeRows = useMemo<VRow[]>(() => {
+    if (search.trim()) {
+      const rows: VRow[] = [];
+      for (let i = 0; i < filtered.length; i += 4) {
+        rows.push({ kind: "cards", stickers: filtered.slice(i, i + 4) });
+      }
+      return rows;
+    }
+    if (!groups) return [];
+    return groups.flatMap(({ team, stickers: gStickers }) => {
+      if (gStickers.length === 0) return [];
+      const stat = teamStats.get(team.id) ?? { owned: 0, total: 0 };
+      const result: VRow[] = [
+        { kind: "header", teamId: team.id, owned: stat.owned, total: stat.total },
+      ];
+      for (let i = 0; i < gStickers.length; i += 4) {
+        result.push({ kind: "cards", stickers: gStickers.slice(i, i + 4) });
+      }
+      return result;
+    });
+  }, [search, filtered, groups, teamStats]);
+
+  // estimateSize: headers ~38px, card rows ~130px (actual sizes measured via measureElement)
+  const virtualizer = useVirtualizer({
+    count: activeRows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: (i) => (activeRows[i]?.kind === "header" ? 38 : 130),
+    overscan: 5,
+  });
 
   const updateSticker = useCallback(
     (id: string, delta: 1 | -1) => {
@@ -510,68 +553,64 @@ export function AlbumClient({ teams, stickers: initialStickers }: Props) {
         </div>
       )}
 
-      {/* ── Sticker grid ── */}
-      <div className="flex-1 overflow-y-auto px-3 pb-4">
+      {/* ── Sticker grid (virtualized) ── */}
+      <div ref={parentRef} className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-ink-mute">
             <p className="text-4xl mb-3">🔍</p>
             <p className="text-sm">Nenhuma figurinha encontrada</p>
           </div>
-        ) : search.trim() ? (
-          // Flat grid during search
-          <>
-            <p className="py-2 text-sm text-ink-mute">
-              {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
-            </p>
-            <div className="grid grid-cols-4 gap-x-2 gap-y-3.5">
-              {filtered.map((sticker) => (
-                <StickerCell
-                  key={sticker.id}
-                  sticker={sticker}
-                  team={teamsById.get(sticker.team_id)}
-                  isSelected={sticker.id === selectedStickerId}
-                  revealing={sticker.id === revealingId}
-                  onSelect={handleSelect}
-                />
-              ))}
-            </div>
-          </>
         ) : (
-          // Grouped view — team header sticks while team is in view
-          <div className="space-y-1">
-            {groups?.map(({ team, stickers: groupStickers }) => {
-              const stat = teamStats.get(team.id);
-              return (
-                <div key={team.id} className="pt-2">
+          <>
+            {search.trim() && (
+              <p className="py-2 px-3 text-sm text-ink-mute">
+                {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
+              </p>
+            )}
+            {/* Outer div sized to full virtual height so the scrollbar is correct */}
+            <div style={{ height: `${virtualizer.getTotalSize()}px`, position: "relative" }}>
+              {virtualizer.getVirtualItems().map((vItem) => {
+                const row = activeRows[vItem.index];
+                return (
                   <div
-                    className="sticky top-0 z-10 bg-bg flex items-center gap-2 py-1.5"
+                    key={vItem.key}
+                    data-index={vItem.index}
+                    ref={virtualizer.measureElement}
+                    className="absolute left-0 top-0 w-full"
+                    style={{ transform: `translateY(${vItem.start}px)` }}
                   >
-                    <p className="font-display font-bold text-sm text-ink">
-                      {team.name}
-                    </p>
-                    <Badge
-                      variant="secondary"
-                      className="text-xs font-mono bg-sunken text-ink-mute border-0"
-                    >
-                      {stat?.owned ?? 0}/{stat?.total ?? 0}
-                    </Badge>
+                    {row.kind === "header" ? (
+                      <div className="flex items-center gap-2 px-3 pt-3 pb-1.5">
+                        <p className="font-display font-bold text-sm text-ink">
+                          {teamsById.get(row.teamId)?.name}
+                        </p>
+                        <Badge
+                          variant="secondary"
+                          className="text-xs font-mono bg-sunken text-ink-mute border-0"
+                        >
+                          {row.owned}/{row.total}
+                        </Badge>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-4 gap-x-2 px-3 pb-3.5">
+                        {row.stickers.map((sticker) => (
+                          <StickerCell
+                            key={sticker.id}
+                            sticker={sticker}
+                            team={teamsById.get(sticker.team_id)}
+                            isSelected={sticker.id === selectedStickerId}
+                            revealing={sticker.id === revealingId}
+                            onSelect={handleSelect}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <div className="grid grid-cols-4 gap-x-2 gap-y-3.5 pt-1 pb-3">
-                    {groupStickers.map((sticker) => (
-                      <StickerCell
-                        key={sticker.id}
-                        sticker={sticker}
-                        team={teamsById.get(sticker.team_id)}
-                        isSelected={sticker.id === selectedStickerId}
-                        revealing={sticker.id === revealingId}
-                        onSelect={handleSelect}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+            <div className="h-4" /> {/* bottom breathing room */}
+          </>
         )}
       </div>
 

@@ -1,5 +1,8 @@
 const CACHE_NAME = "album-copa-2026-v1";
+const IMG_CACHE  = "album-copa-2026-images-v1";
 const OFFLINE_URL = "/offline.html";
+
+const KNOWN_CACHES = new Set([CACHE_NAME, IMG_CACHE]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -16,7 +19,7 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) =>
         Promise.all(
-          keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+          keys.filter((k) => !KNOWN_CACHES.has(k)).map((k) => caches.delete(k))
         )
       )
   );
@@ -30,7 +33,29 @@ self.addEventListener("fetch", (event) => {
   // Only handle GET
   if (request.method !== "GET") return;
 
-  // Never intercept Supabase or external API calls
+  // Cache-first for Supabase sticker images (external, so checked before hostname guard)
+  if (
+    url.hostname.endsWith(".supabase.co") &&
+    url.pathname.startsWith("/storage/v1/object/public/sticker-photos/")
+  ) {
+    event.respondWith(
+      caches.open(IMG_CACHE).then(async (cache) => {
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        try {
+          const response = await fetch(request);
+          if (response.ok) cache.put(request, response.clone());
+          return response;
+        } catch {
+          // Offline and not cached — return empty 503 so the app shows the placeholder
+          return new Response("", { status: 503 });
+        }
+      })
+    );
+    return;
+  }
+
+  // Never intercept other Supabase or external API calls
   if (!url.hostname.includes(self.location.hostname)) return;
 
   // Navigation: network-first with offline fallback

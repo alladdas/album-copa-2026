@@ -12,7 +12,7 @@ export default async function ConfigPage() {
 
   const { data: collection } = await supabase
     .from("collections")
-    .select("*")
+    .select("id, name")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();

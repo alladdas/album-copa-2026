@@ -9,11 +9,17 @@ create or replace function seed_copa_2026(p_user_id uuid)
 returns uuid
 language plpgsql
 security definer
+set search_path = public
 as $$
 declare
   v_collection_id uuid;
   v_team_id uuid;
 begin
+  -- Guard: só o próprio usuário pode criar o próprio álbum
+  if auth.uid() is null or auth.uid() <> p_user_id then
+    raise exception 'unauthorized';
+  end if;
+
   -- Evita duplicar: se o usuário já tem coleção Copa 2026, retorna a existente.
   select id into v_collection_id
     from collections

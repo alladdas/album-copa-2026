@@ -129,7 +129,10 @@ begin
 end $$;
 
 -- ---------- VIEW de estatísticas por origem (ranking de bancas) ----------
-create or replace view v_source_stats as
+-- security_invoker = on: a view executa no contexto do caller, respeitando RLS.
+create or replace view v_source_stats
+with (security_invoker = on)
+as
 select
   s.id as source_id,
   s.collection_id,
