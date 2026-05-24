@@ -1,5 +1,4 @@
-// Tipos gerados a partir do schema Supabase (supabase/schema.sql)
-// Serão completados na Fase 2
+// Tipos gerados a partir de supabase/schema.sql
 
 export type Json =
   | string
@@ -9,126 +8,11 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export interface Database {
-  public: {
-    Tables: {
-      collections: {
-        Row: {
-          id: string;
-          user_id: string;
-          name: string;
-          total_stickers: number;
-          created_at: string;
-        };
-        Insert: Omit<Database["public"]["Tables"]["collections"]["Row"], "id" | "created_at">;
-        Update: Partial<Database["public"]["Tables"]["collections"]["Insert"]>;
-      };
-      teams: {
-        Row: {
-          id: string;
-          user_id: string;
-          collection_id: string;
-          name: string;
-          code: string;
-          kind: "team" | "special" | "coca_cola";
-          order_index: number;
-        };
-        Insert: Omit<Database["public"]["Tables"]["teams"]["Row"], "id">;
-        Update: Partial<Database["public"]["Tables"]["teams"]["Insert"]>;
-      };
-      stickers: {
-        Row: {
-          id: string;
-          user_id: string;
-          collection_id: string;
-          team_id: string;
-          number: number;
-          label: string;
-          sticker_type: StickerType;
-          is_foil: boolean;
-          owned_count: number;
-          notes: string | null;
-          image_url: string | null;
-          updated_at: string;
-        };
-        Insert: Omit<Database["public"]["Tables"]["stickers"]["Row"], "id" | "updated_at">;
-        Update: Partial<Database["public"]["Tables"]["stickers"]["Insert"]>;
-      };
-      sources: {
-        Row: {
-          id: string;
-          user_id: string;
-          collection_id: string;
-          name: string;
-          kind: SourceKind;
-        };
-        Insert: Omit<Database["public"]["Tables"]["sources"]["Row"], "id">;
-        Update: Partial<Database["public"]["Tables"]["sources"]["Insert"]>;
-      };
-      purchases: {
-        Row: {
-          id: string;
-          user_id: string;
-          collection_id: string;
-          date: string;
-          description: string;
-          packs: number;
-          stickers_count: number;
-          amount_cents: number;
-          created_at: string;
-        };
-        Insert: Omit<Database["public"]["Tables"]["purchases"]["Row"], "id" | "created_at">;
-        Update: Partial<Database["public"]["Tables"]["purchases"]["Insert"]>;
-      };
-      acquisitions: {
-        Row: {
-          id: string;
-          user_id: string;
-          collection_id: string;
-          sticker_id: string;
-          source_id: string | null;
-          purchase_id: string | null;
-          was_new: boolean;
-        };
-        Insert: Omit<Database["public"]["Tables"]["acquisitions"]["Row"], "id">;
-        Update: Partial<Database["public"]["Tables"]["acquisitions"]["Insert"]>;
-      };
-      trade_log: {
-        Row: {
-          id: string;
-          user_id: string;
-          collection_id: string;
-          date: string;
-          gave_numbers: number[];
-          got_numbers: number[];
-          partner: string | null;
-          notes: string | null;
-        };
-        Insert: Omit<Database["public"]["Tables"]["trade_log"]["Row"], "id">;
-        Update: Partial<Database["public"]["Tables"]["trade_log"]["Insert"]>;
-      };
-    };
-    Views: {
-      v_source_stats: {
-        Row: {
-          source_id: string;
-          source_name: string;
-          kind: SourceKind;
-          total: number;
-          new_count: number;
-          duplicates: number;
-          efficiency_pct: number;
-        };
-      };
-    };
-    Functions: {
-      seed_copa_2026: {
-        Args: { p_user_id: string };
-        Returns: string;
-      };
-    };
-  };
-}
+// ──────────────────────────────────────────────────
+// Enums
+// ──────────────────────────────────────────────────
+
+export type TeamKind = "team" | "special" | "coca_cola";
 
 export type StickerType =
   | "player"
@@ -150,12 +34,146 @@ export type SourceKind =
   | "presente"
   | "outro";
 
-// Tipos de conveniência
-export type Collection = Database["public"]["Tables"]["collections"]["Row"];
-export type Team = Database["public"]["Tables"]["teams"]["Row"];
-export type Sticker = Database["public"]["Tables"]["stickers"]["Row"];
-export type Source = Database["public"]["Tables"]["sources"]["Row"];
-export type Purchase = Database["public"]["Tables"]["purchases"]["Row"];
-export type Acquisition = Database["public"]["Tables"]["acquisitions"]["Row"];
-export type TradeLog = Database["public"]["Tables"]["trade_log"]["Row"];
-export type SourceStats = Database["public"]["Views"]["v_source_stats"]["Row"];
+// ──────────────────────────────────────────────────
+// Tabelas — Row types (exatamente como vêm do banco)
+// ──────────────────────────────────────────────────
+
+export interface Collection {
+  id: string;
+  user_id: string;
+  name: string;
+  total_stickers: number;
+  created_at: string;
+}
+
+export interface Team {
+  id: string;
+  user_id: string;
+  collection_id: string;
+  name: string;
+  code: string;
+  kind: TeamKind;
+  order_index: number;
+}
+
+export interface Sticker {
+  id: string;
+  user_id: string;
+  collection_id: string;
+  team_id: string;
+  number: number;
+  label: string;
+  sticker_type: StickerType;
+  is_foil: boolean;
+  owned_count: number; // 0=falta, 1=tenho, >=2=repetidas
+  image_url: string | null;
+  source_id: string | null;
+  notes: string | null;
+  updated_at: string;
+}
+
+export interface Source {
+  id: string;
+  user_id: string;
+  collection_id: string;
+  name: string;
+  kind: SourceKind;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface Purchase {
+  id: string;
+  user_id: string;
+  collection_id: string;
+  source_id: string | null;
+  date: string;
+  description: string | null;
+  packs: number;
+  stickers_count: number;
+  amount_cents: number;
+  created_at: string;
+}
+
+export interface Acquisition {
+  id: string;
+  user_id: string;
+  collection_id: string;
+  sticker_id: string;
+  source_id: string | null;
+  purchase_id: string | null;
+  was_new: boolean;
+  created_at: string;
+}
+
+export interface TradeLog {
+  id: string;
+  user_id: string;
+  collection_id: string;
+  date: string;
+  partner: string | null;
+  gave_numbers: number[];
+  got_numbers: number[];
+  notes: string | null;
+  created_at: string;
+}
+
+// ──────────────────────────────────────────────────
+// View v_source_stats
+// ──────────────────────────────────────────────────
+
+export interface SourceStats {
+  source_id: string;
+  collection_id: string;
+  user_id: string;
+  name: string;
+  kind: SourceKind;
+  total_obtidas: number;
+  novas: number;
+  repetidas: number;
+  pct_aproveitamento: number | null;
+}
+
+// ──────────────────────────────────────────────────
+// Insert / Update helpers
+// ──────────────────────────────────────────────────
+
+export type InsertCollection = Omit<Collection, "id" | "created_at">;
+export type InsertTeam = Omit<Team, "id">;
+export type InsertSticker = Omit<Sticker, "id" | "updated_at">;
+export type InsertSource = Omit<Source, "id" | "created_at">;
+export type InsertPurchase = Omit<Purchase, "id" | "created_at">;
+export type InsertAcquisition = Omit<Acquisition, "id" | "created_at">;
+export type InsertTradeLog = Omit<TradeLog, "id" | "created_at">;
+
+// ──────────────────────────────────────────────────
+// Tipos de domínio usados nas queries
+// ──────────────────────────────────────────────────
+
+export interface DashboardStats {
+  totalStickers: number;   // total no álbum (980)
+  owned: number;           // owned_count >= 1
+  missing: number;         // owned_count === 0
+  duplicates: number;      // soma de (owned_count - 1) onde owned_count > 1
+  completionPct: number;   // owned / totalStickers * 100
+  totalSpentCents: number; // soma de amount_cents em purchases
+  avgCostPerSticker: number | null; // totalSpentCents / owned (centavos)
+}
+
+export interface StickerWithTeam extends Sticker {
+  teams: Pick<Team, "name" | "code" | "kind">;
+}
+
+export interface ExportData {
+  exportedAt: string;
+  collectionName: string;
+  stickers: Array<{
+    id: string;
+    number: number;
+    label: string;
+    team_code: string;
+    owned_count: number;
+    notes: string | null;
+  }>;
+  purchases: Array<Omit<Purchase, "user_id">>;
+}
