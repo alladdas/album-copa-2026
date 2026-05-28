@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import { X, Check, CornerDownLeft, MapPin } from "lucide-react";
+import { X, Check, CornerDownLeft, MapPin, Camera } from "lucide-react";
+import { CameraScanner } from "./CameraScanner";
 import { toast } from "sonner";
 import { incrementOwned, recordAcquisition } from "@/lib/queries";
 import type { Source } from "@/types/database";
@@ -727,6 +728,7 @@ export function BancaClient({
   const [tab, setTab] = useState<ViewTab>("missing");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("missing");
   const [registerOpen, setRegisterOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   const missing = useMemo(() => stickers.filter((s) => s.owned_count === 0), [stickers]);
   const duplicates = useMemo(() => stickers.filter((s) => s.owned_count >= 2), [stickers]);
@@ -847,15 +849,27 @@ export function BancaClient({
         <div className="h-28 flex-shrink-0" />
       </div>
 
-      {/* Registrar FAB */}
-      {!registerOpen && (
-        <button
-          onClick={() => setRegisterOpen(true)}
-          className="fixed bottom-24 right-4 z-30 h-14 px-6 rounded-full font-display font-bold text-base text-white flex items-center gap-2 shadow-ground active:scale-95 transition-transform"
-          style={{ background: "var(--green)" }}
-        >
-          Registrar
-        </button>
+      {/* FABs — camera scan + manual register */}
+      {!registerOpen && !scannerOpen && (
+        <div className="fixed bottom-24 left-0 right-0 z-30 flex justify-center gap-3 px-4">
+          <button
+            onClick={() => setScannerOpen(true)}
+            className="h-14 px-5 rounded-full font-display font-semibold text-sm text-ink flex items-center gap-2 shadow-ground active:scale-95 transition-transform"
+            style={{ background: "var(--elev)", border: "1px solid var(--line)" }}
+            aria-label="Registrar com câmera"
+          >
+            <Camera size={18} strokeWidth={2} />
+            Câmera
+          </button>
+          <button
+            onClick={() => setRegisterOpen(true)}
+            className="h-14 px-6 rounded-full font-display font-bold text-base text-white flex items-center gap-2 shadow-ground active:scale-95 transition-transform"
+            style={{ background: "var(--green)" }}
+            aria-label="Registrar com teclado"
+          >
+            Registrar
+          </button>
+        </div>
       )}
 
       {registerOpen && (
@@ -864,6 +878,17 @@ export function BancaClient({
           sources={sources}
           stickers={stickers}
           onClose={() => setRegisterOpen(false)}
+          onIncrement={onIncrement}
+          onDecrement={onDecrement}
+        />
+      )}
+
+      {scannerOpen && (
+        <CameraScanner
+          collectionId={collectionId}
+          stickers={stickers}
+          onClose={() => setScannerOpen(false)}
+          onSwitchToManual={() => { setScannerOpen(false); setRegisterOpen(true); }}
           onIncrement={onIncrement}
           onDecrement={onDecrement}
         />
