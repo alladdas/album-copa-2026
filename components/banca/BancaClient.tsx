@@ -849,27 +849,30 @@ export function BancaClient({
         <div className="h-28 flex-shrink-0" />
       </div>
 
-      {/* FABs — camera scan + manual register */}
+      {/* FABs — two independent fixed buttons so they can never overlap */}
       {!registerOpen && !scannerOpen && (
-        <div className="fixed bottom-24 left-0 right-0 z-30 flex justify-center gap-3 px-4">
+        <>
+          {/* Camera — left side */}
           <button
             onClick={() => setScannerOpen(true)}
-            className="h-14 px-5 rounded-full font-display font-semibold text-sm text-ink flex items-center gap-2 shadow-ground active:scale-95 transition-transform"
+            className="fixed bottom-24 left-4 z-30 h-14 px-5 rounded-full font-display font-semibold text-sm text-ink flex items-center gap-2 shadow-ground active:scale-95 transition-transform"
             style={{ background: "var(--elev)", border: "1px solid var(--line)" }}
             aria-label="Registrar com câmera"
           >
             <Camera size={18} strokeWidth={2} />
             Câmera
           </button>
+
+          {/* Register — right side (same position as the original single FAB) */}
           <button
             onClick={() => setRegisterOpen(true)}
-            className="h-14 px-6 rounded-full font-display font-bold text-base text-white flex items-center gap-2 shadow-ground active:scale-95 transition-transform"
+            className="fixed bottom-24 right-4 z-30 h-14 px-6 rounded-full font-display font-bold text-base text-white flex items-center gap-2 shadow-ground active:scale-95 transition-transform"
             style={{ background: "var(--green)" }}
             aria-label="Registrar com teclado"
           >
             Registrar
           </button>
-        </div>
+        </>
       )}
 
       {registerOpen && (

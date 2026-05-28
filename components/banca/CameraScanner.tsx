@@ -99,6 +99,10 @@ export function CameraScanner({
   // ── Reactive state ────────────────────────────────────────────────────
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
+  // True when the native camera stream is landscape but the screen is portrait.
+  // iOS/PWA: getUserMedia returns a 1280×720 landscape stream even in portrait;
+  // we rotate the <video> element 90° with CSS and adjust the canvas crop axis.
+  const [videoNeedsRotation, setVideoNeedsRotation] = useState(false);
   const [pendingMatch, setPendingMatch] = useState<PendingMatch | null>(null);
   const [autoConfirm, setAutoConfirmState] = useState(true);
   const [history, setHistory] = useState<ScanHistoryEntry[]>([]);
@@ -128,6 +132,14 @@ export function CameraScanner({
         if (!videoRef.current) return;
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
+        // After play() the intrinsic dimensions are known.
+        // If native stream is landscape (vw > vh) but screen is portrait,
+        // we need a CSS 90° rotation on the <video> and an axis-swapped canvas crop.
+        const v = videoRef.current;
+        const needsRot =
+          v.videoWidth > v.videoHeight &&
+          window.innerHeight > window.innerWidth;
+        setVideoNeedsRotation(needsRot);
         setCameraReady(true);
       } catch (err) {
         const name = err instanceof Error ? err.name : "";
@@ -246,18 +258,47 @@ export function CameraScanner({
 
       isProcessingRef.current = true;
       try {
-        // Crop the vertical center strip (handles both landscape/portrait native res)
-        const sy = Math.round(vh * CROP_Y_START);
-        const sh = Math.round(vh * (CROP_Y_END - CROP_Y_START));
-
-        canvas.width  = vw;
-        canvas.height = sh;
-
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
-        // Boost contrast to help OCR with low-light / glossy stickers
-        ctx.filter = "grayscale(1) contrast(1.8)";
-        ctx.drawImage(video, 0, sy, vw, sh, 0, 0, vw, sh);
+
+        // Does the native stream need a 90° rotation to match portrait display?
+        const streamIsLandscape = vw > vh;
+        const screenIsPortrait  = window.innerHeight > window.innerWidth;
+        const needsRot = streamIsLandscape && screenIsPortrait;
+
+        if (needsRot) {
+          // iOS PWA: native stream is landscape (e.g. 1280×720) but phone is portrait.
+          // The scan zone (35–65 % of portrait HEIGHT) maps to the centre horizontal
+          // strip of the LANDSCAPE WIDTH (35–65 % of vw).
+          // We crop that strip and rotate 90° CW on the canvas so text is upright
+          // when fed to Tesseract.
+          const sx = Math.round(vw * CROP_Y_START);
+          const sw = Math.round(vw * (CROP_Y_END - CROP_Y_START));
+
+          // After 90° CW rotation: canvas width = vh, canvas height = sw
+          canvas.width  = vh;
+          canvas.height = sw;
+
+          ctx.save();
+          ctx.filter = "grayscale(1) contrast(1.8)";
+          // translate to the right edge, then rotate CW so the strip stands upright
+          ctx.translate(vh, 0);
+          ctx.rotate(Math.PI / 2);
+          ctx.drawImage(video, sx, 0, sw, vh, 0, 0, sw, vh);
+          ctx.restore();
+        } else {
+          // Normal portrait stream (or desktop): crop the centre vertical strip.
+          const sy = Math.round(vh * CROP_Y_START);
+          const sh = Math.round(vh * (CROP_Y_END - CROP_Y_START));
+
+          canvas.width  = vw;
+          canvas.height = sh;
+
+          ctx.save();
+          ctx.filter = "grayscale(1) contrast(1.8)";
+          ctx.drawImage(video, 0, sy, vw, sh, 0, 0, vw, sh);
+          ctx.restore();
+        }
 
         const blob = await new Promise<Blob | null>((res) =>
           canvas.toBlob(res, "image/jpeg", 0.85)
@@ -323,13 +364,33 @@ export function CameraScanner({
       {/* Hidden canvas — frame capture only, never displayed */}
       <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
 
-      {/* Camera video — fills screen, maintains native ratio via object-cover */}
+      {/* Camera video — fills screen.
+          When the native stream is landscape (iOS PWA) we rotate the element
+          90° CW so the portrait scene appears upright. The dimensions are swapped
+          (100vh × 100vw) and the element is re-centred with negative offsets. */}
       <video
         ref={videoRef}
         playsInline
         muted
-        className="absolute inset-0 w-full h-full object-cover"
-        style={{ opacity: cameraReady ? 1 : 0, transition: "opacity 300ms" }}
+        style={videoNeedsRotation ? {
+          position: "absolute",
+          width: "100vh",
+          height: "100vw",
+          top:  "calc((100vh - 100vw) / 2)",
+          left: "calc((100vw - 100vh) / 2)",
+          transform: "rotate(90deg)",
+          objectFit: "cover",
+          opacity: cameraReady ? 1 : 0,
+          transition: "opacity 300ms",
+        } : {
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          opacity: cameraReady ? 1 : 0,
+          transition: "opacity 300ms",
+        }}
       />
 
       {/* ── Camera loading ──────────────────────────────────────────── */}
