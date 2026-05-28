@@ -3,7 +3,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -112,12 +111,6 @@ export function CameraScanner({
     stickersRef.current = stickers;
     validCodesRef.current = new Set(stickers.map((s) => s.teamCode));
   }, [stickers]);
-
-  // Build validCodes once for stable useMemo deps elsewhere
-  const validCodes = useMemo(
-    () => new Set(stickers.map((s) => s.teamCode)),
-    [stickers]
-  );
 
   // ── Camera setup ──────────────────────────────────────────────────────
   useEffect(() => {
